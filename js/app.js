@@ -1,252 +1,28 @@
-
-const $ = (s)=>document.querySelector(s);
-const app = document.getElementById("app");
-const STORE = "pakkom_math_adventure_v1";
-
-function blankState(name="", cls="7A"){
-  return {
-    name, cls, xp:0, coins:0, unlocked:1,
-    stars:{}, completed:{}, badges:[],
-    lastPlayed:null
-  };
-}
-function load(){
-  try { return JSON.parse(localStorage.getItem(STORE)) || null } catch(e){ return null }
-}
-function save(s){ localStorage.setItem(STORE, JSON.stringify(s)); }
-let state = load();
-
-function starText(n){ return "⭐".repeat(n) + "☆".repeat(Math.max(0,3-n)); }
-function totalStars(){ return Object.values(state.stars||{}).reduce((a,b)=>a+b,0); }
-function levelById(id){
-  if(id<=8) return GAME_DATA.levels.find(x=>x.id===id);
-  if(id===9) return GAME_DATA.miniBoss;
-  return GAME_DATA.finalBoss;
-}
-function canOpen(id){
-  if(id<=state.unlocked) return true;
-  if(id===9) return GAME_DATA.levels.every(x=>state.completed[x.id]);
-  if(id===10) return !!state.completed[9];
-  return false;
-}
-function topbar(){
-  return `
-  <div class="topbar">
-    <div class="brand"><div class="brand-mark">∑</div><span>PakKom Math Adventure</span></div>
-    <div class="stats">
-      <span class="pill">⭐ ${totalStars()}</span>
-      <span class="pill">⚡ ${state.xp} XP</span>
-      <span class="pill">🪙 ${state.coins}</span>
-    </div>
-  </div>`;
-}
-
-function renderLogin(){
-  app.innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card">
-        <div class="logo-big">∑</div>
-        <div class="eyebrow">PakKom Learning Game</div>
-        <h1>Math Adventure</h1>
-        <p>Masuki Number Forest dan selesaikan tantangan matematika untuk mengumpulkan bintang, XP, dan koin.</p>
-        <div class="form-group"><label>Nama siswa</label><input id="name" placeholder="Contoh: Budi Santoso"></div>
-        <div class="form-group"><label>Kelas</label>
-          <select id="cls">
-            ${["7A","7B","7C","7D","7E","7F","7G","7H","7I","8A","8B","8C","8D","8E","8F","8G","8H","8I","9A","9B","9C","9D","9E","9F","9G","9H","9I"].map(c=>`<option>${c}</option>`).join("")}
-          </select>
-        </div>
-        <button class="btn btn-dark" id="start" style="width:100%;margin-top:8px">Mulai Petualangan →</button>
-        <p class="small" style="margin-top:14px">Versi demo menyimpan progress di perangkat ini. Firebase dapat ditambahkan kemudian.</p>
-      </div>
-    </div>`;
-  $("#start").onclick=()=>{
-    const name=$("#name").value.trim();
-    if(!name){ $("#name").focus(); return; }
-    state=blankState(name,$("#cls").value); save(state); renderHome();
-  }
-}
-
-function node(level, special=""){
-  const open=canOpen(level.id);
-  const done=state.completed[level.id];
-  const cls=`node ${open?"open":"locked"} ${done?"done":""} ${special}`;
-  const st=state.stars[level.id]||0;
-  return `<div class="node-wrap">
-    <button class="${cls}" data-level="${level.id}" ${open?"":"disabled"} title="${level.title}">
-      <div><div style="font-size:28px">${level.icon}</div><div style="font-size:12px">${level.id<=8?"Level "+level.id:(level.id===9?"MINI BOSS":"FINAL")}</div></div>
-    </button>
-    <div class="node-stars">${done?starText(st):(open?"Siap dimainkan":"🔒")}</div>
-  </div>`;
-}
-
-function renderHome(){
-  if(!state){ renderLogin(); return; }
-  const completed = Object.keys(state.completed||{}).filter(k=>state.completed[k]).length;
-  const progress = Math.min(100, Math.round((completed/10)*100));
-  app.innerHTML = `<div class="app-shell">
-    ${topbar()}
-    <section class="hero">
-      <div class="eyebrow">Number Forest • Dunia 1</div>
-      <h1>Halo, ${state.name}! 🌿</h1>
-      <p>Hutan Angka kehilangan Kristal Pengetahuan. Taklukkan setiap tantangan, kalahkan para penjaga, dan rebut kembali kristalnya.</p>
-      <button class="btn btn-gold" id="continue">▶ Lanjutkan Petualangan</button>
-    </section>
-
-    <div class="grid">
-      <div class="card span-8 world-card">
-        <div class="section-title" style="margin-top:0">
-          <div><div class="kicker">PETA DUNIA</div><h2>🌲 Number Forest</h2></div>
-          <span class="pill">${progress}% selesai</span>
-        </div>
-        <div class="progress"><span style="width:${progress}%"></span></div>
-        <div class="map">
-          ${GAME_DATA.levels.map((l,i)=>node(l)+(i<GAME_DATA.levels.length-1?'<div class="connector"></div>':'')).join("")}
-          <div class="connector"></div>${node(GAME_DATA.miniBoss,"boss")}
-          <div class="connector"></div>${node(GAME_DATA.finalBoss,"boss")}
-        </div>
-      </div>
-
-      <div class="span-4">
-        <div class="card">
-          <h3>🎯 Misi Hari Ini</h3>
-          <div class="quest"><div class="quest-icon">⭐</div><div><b>Kumpulkan 3 bintang</b><div class="small">Mainkan satu level dengan skor tinggi.</div></div></div>
-          <div class="quest"><div class="quest-icon">⚡</div><div><b>Dapatkan 100 XP</b><div class="small">Level sulit memberikan XP lebih besar.</div></div></div>
-          <div class="quest"><div class="quest-icon">🔥</div><div><b>Jawab 3 kali beruntun</b><div class="small">Latih ketelitianmu.</div></div></div>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <h3>🏅 Badge</h3>
-          <div class="badge-row">
-            ${state.badges.length?state.badges.map(x=>`<span class="badge">${x}</span>`).join(""):'<span class="small">Belum ada badge. Selesaikan level pertamamu!</span>'}
-          </div>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <h3>👤 Profil Petualang</h3>
-          <p><b>${state.name}</b><br><span class="small">Kelas ${state.cls}</span></p>
-          <button class="btn btn-soft" id="reset">Ganti Siswa / Reset</button>
-        </div>
-      </div>
-    </div>
-    <div class="footer">PakKom Math Adventure • Prototype v1.0</div>
-  </div>`;
-  document.querySelectorAll("[data-level]").forEach(el=>el.onclick=()=>renderLevel(+el.dataset.level));
-  $("#continue").onclick=()=>{
-    let id=1;
-    for(let i=1;i<=10;i++){ if(canOpen(i)&&!state.completed[i]){ id=i; break; } }
-    renderLevel(id);
-  }
-  $("#reset").onclick=()=>{
-    if(confirm("Reset progress demo di perangkat ini?")){ localStorage.removeItem(STORE); state=null; renderLogin(); }
-  }
-}
-
-function renderLevel(id){
-  const level=levelById(id);
-  if(!canOpen(id)){ renderHome(); return; }
-  let idx=0, correct=0, answered=false, streak=0, bestStreak=0;
-  let playerHP=100, bossHP=level.boss?level.maxHP:0;
-  const questions=[...level.questions];
-
-  const shell=()=>{
-    app.innerHTML=`<div class="app-shell">${topbar()}<div class="level-screen">
-      <div class="level-head">
-        <div><div class="kicker">${level.difficulty} • ${level.boss?"Pertarungan":"Tantangan"}</div><h1 style="margin:.25rem 0">${level.icon} ${level.title}</h1></div>
-        <button class="btn btn-soft" id="back">← Peta</button>
-      </div>
-      <div id="stage"></div>
-    </div></div>`;
-    $("#back").onclick=renderHome;
-    showQuestion();
-  }
-
-  function showQuestion(){
-    answered=false;
-    if(idx>=questions.length){
-      if(level.boss && bossHP>0){ idx=0; questions.sort(()=>Math.random()-.5); }
-      else return finish();
-    }
-    const q=questions[idx];
-    const hpMarkup=level.boss?`
-      <div class="battle">
-        <div class="fighter"><div class="fighter-icon">🧑‍🚀</div><b>${state.name}</b><div class="hp"><span style="width:${playerHP}%"></span></div><div class="small">HP ${playerHP}/100</div></div>
-        <div class="fighter"><div class="fighter-icon">${level.icon}</div><b>${level.title.replace(/.*— /,"")}</b><div class="hp"><span style="width:${Math.max(0,bossHP/level.maxHP*100)}%"></span></div><div class="small">HP ${Math.max(0,bossHP)}/${level.maxHP}</div></div>
-      </div>`:"";
-    $("#stage").innerHTML=`
-      ${hpMarkup}
-      <div class="card question-card">
-        <div class="section-title" style="margin-top:0">
-          <span class="pill">Soal ${idx+1}/${questions.length}</span>
-          <span class="pill">🔥 Streak ${streak}</span>
-        </div>
-        <div class="progress"><span style="width:${(idx/questions.length)*100}%"></span></div>
-        <div class="question">${q.q}</div>
-        <div class="choices">${q.choices.map((c,i)=>`<button class="choice" data-choice="${i}">${c}</button>`).join("")}</div>
-        <div id="feedback"></div>
-      </div>`;
-    document.querySelectorAll("[data-choice]").forEach(btn=>btn.onclick=()=>answer(+btn.dataset.choice,btn,q));
-  }
-
-  function answer(choice,btn,q){
-    if(answered) return;
-    answered=true;
-    const buttons=[...document.querySelectorAll("[data-choice]")];
-    buttons.forEach(b=>b.disabled=true);
-    if(choice===q.a){
-      correct++; streak++; bestStreak=Math.max(bestStreak,streak);
-      btn.classList.add("correct");
-      if(level.boss) bossHP-=80;
-      $("#feedback").innerHTML=`<div class="feedback">✅ <b>Benar!</b> ${level.boss?"Serangan mengenai musuh.":"Jalur petualangan terbuka."}</div>`;
-    }else{
-      streak=0; btn.classList.add("wrong"); buttons[q.a].classList.add("correct");
-      if(level.boss) playerHP-=20;
-      $("#feedback").innerHTML=`<div class="feedback">💡 <b>Belum tepat.</b> ${q.h}</div>`;
-    }
-    const next=document.createElement("button");
-    next.className="btn btn-primary"; next.style.marginTop="14px";
-    next.textContent=(level.boss && bossHP<=0)?"Selesaikan Pertarungan →":"Lanjut →";
-    $("#feedback").appendChild(next);
-    next.onclick=()=>{
-      if(level.boss && playerHP<=0){
-        alert("HP habis. Coba lagi pertarungannya!");
-        return renderLevel(id);
-      }
-      idx++; showQuestion();
-    }
-  }
-
-  function finish(){
-    const ratio=correct/questions.length;
-    let stars= ratio>=.9?3:ratio>=.75?2:ratio>=.5?1:0;
-    if(level.boss && bossHP<=0) stars=Math.max(stars,2);
-    const oldStars=state.stars[id]||0;
-    const first=!state.completed[id];
-    state.stars[id]=Math.max(oldStars,stars);
-    if(stars>0 || level.boss){
-      state.completed[id]=true;
-      if(first){ state.xp+=level.xp; state.coins+=level.coins; }
-      if(id<=8) state.unlocked=Math.max(state.unlocked,id+1);
-      if(id===1 && !state.badges.includes("🌱 Penjelajah Pemula")) state.badges.push("🌱 Penjelajah Pemula");
-      if(bestStreak>=3 && !state.badges.includes("🔥 Streak x3")) state.badges.push("🔥 Streak x3");
-      if(id===9 && !state.badges.includes("🗿 Golem Breaker")) state.badges.push("🗿 Golem Breaker");
-      if(id===10 && !state.badges.includes("💎 Penjaga Kristal")) state.badges.push("💎 Penjaga Kristal");
-    }
-    state.lastPlayed=Date.now(); save(state);
-    $("#stage").innerHTML=`
-      <div class="card result">
-        <div class="trophy">${id===10?"💎":(stars>=2?"🏆":"🧭")}</div>
-        <div class="eyebrow">${id===10?"Kristal ditemukan!":"Level selesai"}</div>
-        <h1>${stars? "Hebat, "+state.name+"!":"Coba sekali lagi"}</h1>
-        <div class="stars-big">${starText(stars)}</div>
-        <p>Kamu menjawab <b>${correct} dari ${questions.length}</b> soal dengan benar.</p>
-        ${first&&stars?`<p><span class="pill">+${level.xp} XP</span> <span class="pill">+${level.coins} 🪙</span></p>`:""}
-        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:22px">
-          <button class="btn btn-soft" id="again">↻ Mainkan Lagi</button>
-          <button class="btn btn-dark" id="map">Kembali ke Peta</button>
-        </div>
-      </div>`;
-    $("#again").onclick=()=>renderLevel(id);
-    $("#map").onclick=renderHome;
-  }
-  shell();
-}
-
-if(state) renderHome(); else renderLogin();
+const A=document.querySelector("#app"),K="pma_v2";
+const worlds={
+number:{name:"Number Forest",icon:"🌳",need:0,levels:[
+["n1","Gerbang Bilangan","🌿",[["18 + 27 = ...",["35","45","55","46"],1,"Pisahkan 27 menjadi 20 + 7."],["64 - 29 = ...",["35","43","45","34"],0,"Kurangi 30 lalu tambah 1."],["7 × 8 = ...",["48","54","56","64"],2,"Gunakan fakta perkalian."],["96 ÷ 12 = ...",["6","7","8","9"],2,"12 × berapa = 96?"]]],
+["n2","Jembatan Pola","🌉",[["2, 5, 8, 11, ...",["12","13","14","15"],2,"Bertambah 3."],["40, 35, 30, 25, ...",["15","20","22","24"],1,"Berkurang 5."],["3, 6, 12, 24, ...",["27","36","42","48"],3,"Dikali 2."],["1, 4, 9, 16, ...",["20","24","25","32"],2,"Pola kuadrat."]]],
+["n3","Gua Faktor","🪨",[["FPB 18 dan 24 = ...",["3","6","9","12"],1,"Cari faktor terbesar yang sama."],["KPK 6 dan 8 = ...",["12","18","24","48"],2,"Cari kelipatan terkecil yang sama."],["Bilangan prima adalah ...",["21","27","29","33"],2,"Hanya dua faktor."],["Faktor dari 36 adalah ...",["5","7","9","11"],2,"36 habis dibagi angka tersebut."]]],
+["n4","Menara Negatif","🗼",[["-6 + 14 = ...",["-20","-8","8","20"],2,"Bergerak ke kanan."],["7 - 12 = ...",["-5","5","19","-19"],0,"Melewati nol."],["-4 × 6 = ...",["-24","24","-10","10"],0,"Negatif × positif."],["-36 ÷ -6 = ...",["-6","6","-30","30"],1,"Negatif ÷ negatif."]]],
+["n5","Stone Golem","🗿",[["48 ÷ 6 + 7 × 3 = ...",["29","31","35","45"],0,"Bagi dan kali dahulu."],["30% dari 150 = ...",["35","40","45","50"],2,"10% adalah 15."],["-8 + 3 × 5 = ...",["-25","7","15","23"],1,"Perkalian dahulu."],["FPB 24 dan 36 = ...",["6","8","12","18"],2,"Faktor terbesar sama."]],true]},
+fraction:{name:"Fraction Island",icon:"🏝️",need:10,levels:[
+["f1","Pantai Pecahan","🥥",[["1/2 sama dengan ...",["2/3","2/4","3/4","1/4"],1,"Kalikan atas-bawah dengan 2."],["3/4 dalam desimal = ...",["0,25","0,50","0,75","1,25"],2,"3 ÷ 4."],["25% sama dengan ...",["1/2","1/3","1/4","3/4"],2,"25/100."],["Pecahan terbesar ...",["1/2","2/3","3/8","4/7"],1,"Bandingkan nilainya."]]],
+["f2","Pizza Fraction","🍕",[["Pizza 8 potong, dimakan 3. Sisa ...",["3/8","5/8","5/3","8/5"],1,"Sisa 5 dari 8."],["1/4 + 2/4 = ...",["2/8","3/4","3/8","1/2"],1,"Jumlahkan pembilang."],["5/6 - 2/6 = ...",["3/6","3/12","7/6","2/3"],0,"Kurangkan pembilang."],["2/3 dari 12 = ...",["6","8","9","10"],1,"12 ÷ 3 × 2."]]],
+["f3","Jembatan Pecahan","🌁",[["1/2 + 1/3 = ...",["2/5","5/6","2/6","1"],1,"Samakan penyebut."],["3/4 - 1/6 = ...",["5/12","7/12","2/10","1/2"],1,"Penyebut 12."],["2/5 × 15 = ...",["5","6","8","10"],1,"15 ÷ 5 × 2."],["3/4 ÷ 1/2 = ...",["3/8","2/3","3/2","1"],2,"Kalikan kebalikan."]]],
+["f4","Pasar Diskon","🛍️",[["Rp120.000 diskon 25%. Harga ...",["Rp80.000","Rp90.000","Rp95.000","Rp100.000"],1,"Diskon Rp30.000."],["40% dari bilangan = 32. Bilangan ...",["64","72","80","96"],2,"32 ÷ 0,4."],["60 naik menjadi 75. Kenaikan ...",["15%","20%","25%","30%"],2,"Naik 15 dari 60."],["Diskon 20%, harga Rp160.000. Awal ...",["Rp180.000","Rp190.000","Rp200.000","Rp220.000"],2,"160.000 adalah 80%."]]],
+["f5","Captain Percent","🏴‍☠️",[["3/5 + 1/4 = ...",["4/9","17/20","4/20","7/10"],1,"Penyebut 20."],["15% dari 240 = ...",["24","30","36","40"],2,"10%=24, 5%=12."],["0,375 = ...",["3/8","3/5","5/8","7/8"],0,"375/1000."],["Rp250.000 naik 12%. Jadi ...",["Rp270.000","Rp275.000","Rp280.000","Rp290.000"],2,"Naik Rp30.000."]],true]]}};
+const shopItems=[["🎩","Wizard Hat",250],["🐱","Math Cat",450],["🦊","Number Fox",650],["👑","Crystal Crown",900],["🐲","Mini Dragon",1200]];
+let S=JSON.parse(localStorage.getItem(K)||"null"),selected="🧑‍🚀";
+const save=()=>localStorage.setItem(K,JSON.stringify(S)),stars=()=>Object.values(S.stars||{}).reduce((a,b)=>a+b,0),st=n=>"⭐".repeat(n)+"☆".repeat(3-n);
+function top(){return `<div class=top><div class=brand>∑ <span>PakKom Math Adventure</span></div><div class=stats><b class=pill>${S.avatar}</b><b class=pill>⭐ ${stars()}</b><b class=pill>⚡ ${S.xp}</b><b class=pill>🪙 ${S.coin}</b></div></div>`}
+function tabs(a){return `<div class=tabs>${[["home","🗺️ Adventure"],["shop","🛍️ Shop"],["ach","🏅 Achievement"],["teacher","👩‍🏫 Demo Guru"]].map(x=>`<button class="btn ${a==x[0]?"dark":"soft"}" data-tab=${x[0]}>${x[1]}</button>`).join("")}</div>`}
+function bind(){document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>({home,shop,ach,teacher}[b.dataset.tab])())}
+function login(){let av=["🧑‍🚀","🧙","🥷","🦸","🧑‍🔬","🧝"];A.innerHTML=`<div class=login><div class=card><h1>∑ Math Adventure v2</h1><p>The Lost Math Crystals</p><label>NIS</label><input id=nis><label>Nama</label><input id=nm><label>Kelas</label><select id=cl>${["7A","7B","7C","7D","7E","7F","7G","7H","7I","8A","8B","8C","8D","8E","8F","8G","8H","8I","9A","9B","9C","9D","9E","9F","9G","9H","9I"].map(x=>`<option>${x}</option>`)}</select><label>Avatar</label><div class=avatars>${av.map((x,i)=>`<button class="av ${i?"":"sel"}">${x}</button>`).join("")}</div><br><button id=go class="btn dark">Mulai Petualangan →</button><p class=small>Demo lokal. NIS disiapkan untuk Firebase.</p></div></div>`;document.querySelectorAll(".av").forEach(b=>b.onclick=()=>{selected=b.textContent;document.querySelectorAll(".av").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});go.onclick=()=>{if(!nis.value||!nm.value)return alert("Isi NIS dan nama.");S={nis:nis.value,name:nm.value,cls:cl.value,avatar:selected,xp:0,coin:0,stars:{},done:{},items:[],badges:[]};save();home()}}
+function home(){A.innerHTML=`<div class=wrap>${top()}${tabs("home")}<div class=hero><small>CHAPTER 1 • THE LOST MATH CRYSTALS</small><h1>${S.avatar} Halo, ${S.name}!</h1><p>Jelajahi dua dunia, kumpulkan bintang, kalahkan boss, dan rebut kembali Kristal Matematika.</p></div><div class=grid>${Object.entries(worlds).map(([k,w])=>`<div class="card c6 world"><div class=icon>${w.icon}</div><small>${stars()>=w.need?"DUNIA TERBUKA":"🔒 BUTUH "+w.need+" BINTANG"}</small><h2>${w.name}</h2><p>${k=="number"?"Operasi, pola, faktor dan bilangan negatif.":"Pecahan, desimal, persen dan diskon."}</p><button data-world=${k} class="btn green" ${stars()<w.need?"disabled":""}>Jelajahi →</button></div>`).join("")}<div class="card c8"><h2>🎯 Daily Quest</h2><p>⭐ Raih 3 bintang &nbsp; • &nbsp; 🔥 Streak 3 &nbsp; • &nbsp; 🪙 Kumpulkan 100 koin</p></div><div class="card c4"><h2>🏫 Class Boss</h2><p>Ancient Dragon</p><div class=progress><span style="width:38%"></span></div><p class=small>Preview untuk mode kelas online.</p></div></div></div>`;bind();document.querySelectorAll("[data-world]").forEach(b=>b.onclick=()=>map(b.dataset.world))}
+function map(k){let w=worlds[k];A.innerHTML=`<div class=wrap>${top()}${tabs("home")}<button class="btn soft" id=back>← Semua Dunia</button><h1>${w.icon} ${w.name}</h1><div class=card><div class=map>${w.levels.map((l,i)=>`<div><button data-level=${l[0]} class="node ${S.done[l[0]]?"done":""} ${l[4]?"boss":""}" ${(i&& !S.done[w.levels[i-1][0]])?"disabled":""}><div>${l[2]}</div><small>${l[4]?"BOSS":"LEVEL "+(i+1)}</small></button><div class=stars>${S.done[l[0]]?st(S.stars[l[0]]):"Siap"}</div></div>${i<w.levels.length-1?"<div class=line></div>":""}`).join("")}</div></div></div>`;bind();back.onclick=home;document.querySelectorAll("[data-level]").forEach(b=>b.onclick=()=>play(k,b.dataset.level))}
+function play(k,id){let l=worlds[k].levels.find(x=>x[0]==id),i=0,correct=0,hp=100,bhp=l[4]?300:0,dmg=40;A.innerHTML=`<div class=wrap>${top()}<button id=quit class="btn soft">← Peta</button><h1>${l[2]} ${l[1]}</h1><div id=stage></div></div>`;quit.onclick=()=>map(k);function show(){if(l[4]&&bhp<=0)return finish();if(i>=l[3].length){if(l[4])i=0;else return finish()}let q=l[3][i];stage.innerHTML=`${l[4]?`<div class=battle><div class=card>${S.avatar} <b>${S.name}</b><div class=hp><span style="width:${hp}%"></span></div>HP ${hp}</div><div class=card>${l[2]} <b>${l[1]}</b><div class=hp><span style="width:${Math.max(0,bhp/3)}%"></span></div>HP ${Math.max(0,bhp)}</div></div><div class=attacks>${[[30,"⚡ Quick"],[55,"🔥 Power"],[80,"💥 Ultimate"]].map(x=>`<button data-d=${x[0]} class="btn attack soft">${x[1]} • ${x[0]}</button>`).join("")}</div>`:""}<div class=card><span class=pill>Soal ${i+1}/${l[3].length}</span><div class=question>${q[0]}</div><div class=choices>${q[1].map((x,j)=>`<button class=choice data-c=${j}>${x}</button>`).join("")}</div><div id=fb></div></div>`;document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{dmg=+b.dataset.d;document.querySelectorAll(".attack").forEach(x=>x.classList.remove("sel"));b.classList.add("sel")});document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{let ok=+b.dataset.c==q[2];document.querySelectorAll("[data-c]").forEach(x=>x.disabled=true);b.classList.add(ok?"ok":"no");if(ok){correct++;if(l[4])bhp-=dmg}else{if(l[4])hp-=15;document.querySelectorAll("[data-c]")[q[2]].classList.add("ok")}fb.innerHTML=`<div class=feedback>${ok?"✅ Benar!":"💡 "+q[3]}</div><button id=next class="btn green">Lanjut →</button>`;next.onclick=()=>{if(hp<=0)return play(k,id);i++;show()}})}function finish(){let r=correct/l[3].length,n=r>=.9?3:r>=.75?2:r>=.5?1:0;if(l[4])n=Math.max(n,2);let first=!S.done[id];S.done[id]=true;S.stars[id]=Math.max(S.stars[id]||0,n);if(first){S.xp+=l[4]?250:80;S.coin+=l[4]?120:35}if(l[4]&&!S.badges.includes("🐲 Boss Hunter"))S.badges.push("🐲 Boss Hunter");save();stage.innerHTML=`<div class=card style="text-align:center"><div class=icon>${l[4]?"💎":"🏆"}</div><h1>Petualangan berhasil!</h1><h2>${st(n)}</h2><p>Benar ${correct}/${l[3].length}</p><button id=tomap class="btn dark">Kembali ke Peta</button></div>`;tomap.onclick=()=>map(k)}show()}
+function shop(){A.innerHTML=`<div class=wrap>${top()}${tabs("shop")}<h1>🛍️ Adventure Shop</h1><div class=shop>${shopItems.map((x,i)=>`<div class="card item"><div class=icon>${x[0]}</div><h3>${x[1]}</h3><p>🪙 ${x[2]}</p><button data-buy=${i} class="btn gold" ${S.items.includes(i)?"disabled":""}>${S.items.includes(i)?"✓ Dimiliki":"Beli"}</button></div>`).join("")}</div></div>`;bind();document.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>{let i=+b.dataset.buy;if(S.coin<shopItems[i][2])return alert("Koin belum cukup.");S.coin-=shopItems[i][2];S.items.push(i);save();shop()})}
+function ach(){A.innerHTML=`<div class=wrap>${top()}${tabs("ach")}<div class=grid><div class="card c4" style="text-align:center"><div class=icon>${S.avatar}</div><h2>${S.name}</h2><p>NIS ${S.nis} • ${S.cls}</p><button id=reset class="btn soft">Reset Demo</button></div><div class="card c8"><h2>🏅 Achievement</h2><p>${S.badges.length?S.badges.join(" &nbsp; "):"Belum ada badge."}</p><h2>🎒 Koleksi</h2><p>${S.items.length?S.items.map(i=>shopItems[i][0]+" "+shopItems[i][1]).join(" &nbsp; "):"Belum ada item."}</p></div></div></div>`;bind();reset.onclick=()=>{if(confirm("Hapus progress?")){localStorage.removeItem(K);S=null;login()}}}
+function teacher(){A.innerHTML=`<div class=wrap>${top()}${tabs("teacher")}<div class=hero><small>TEACHER COMMAND CENTER • PREVIEW</small><h1>👩‍🏫 Progress Kelas</h1><p>Dashboard ini adalah rancangan untuk versi Firebase, sehingga guru nanti dapat melihat seluruh siswa.</p></div><div class=grid><div class="card c4"><small>SISWA DEMO</small><h1>1</h1></div><div class="card c4"><small>TOTAL BINTANG</small><h1>⭐ ${stars()}</h1></div><div class="card c4"><small>XP</small><h1>⚡ ${S.xp}</h1></div><div class="card c8"><h2>Analisis</h2><p><b>${S.name}</b> • ${S.cls}</p><p>Number Forest: ${worlds.number.levels.filter(x=>S.done[x[0]]).length}/5 level</p><p>Fraction Island: ${worlds.fraction.levels.filter(x=>S.done[x[0]]).length}/5 level</p></div><div class="card c4"><h2>🐉 Class Boss</h2><div class=progress><span style="width:38%"></span></div><p class=small>Kontribusi kelas akan aktif setelah Firestore.</p></div></div></div>`;bind()}
+S?home():login();
