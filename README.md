@@ -1,6 +1,6 @@
-# PakKom Math Adventure v2.2 — Firebase
+# PakKom Math Adventure v2.2.1 — Firebase
 
-Versi online dengan Firebase Authentication + Cloud Firestore.
+Versi online dengan Firebase Authentication + Cloud Firestore. v2.2.1 memperbaiki layar yang berhenti di “Memuat Math Adventure…” sebelum Firebase dikonfigurasi.
 
 Fitur:
 - Login siswa NIS + password
