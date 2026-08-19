@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isStaff() {
+      return signedIn()
+        && userDoc().data.role in ['admin', 'teacher'];
+    }
+
+    match /users/{uid} {
+      // Siswa dapat membuat profil dirinya sendiri hanya sebagai student.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role == 'student';
+
+      // Pemilik membaca profil sendiri; staff membaca semua.
+      allow read: if signedIn()
+        && (request.auth.uid == uid || isStaff());
+
+      // Siswa boleh memperbarui profil sendiri tetapi tidak boleh menaikkan role.
+      allow update: if signedIn()
+        && (
+          isStaff()
+          || (
+            request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && resource.data.role == 'student'
+          )
+        );
+
+      allow delete: if isStaff();
+    }
+
+    match /progress/{uid} {
+      allow create, read, update: if signedIn()
+        && (request.auth.uid == uid || isStaff());
+      allow delete: if isStaff();
+    }
+
+    match /questions/{questionId} {
+      // Semua pengguna yang login dapat membaca bank soal.
+      allow read: if signedIn();
+      // Hanya guru/admin yang dapat mengubah bank soal.
+      allow create, update, delete: if isStaff();
+    }
+  }
+}
