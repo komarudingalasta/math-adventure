@@ -1,13 +1,10 @@
-// GANTI dengan Firebase Web App config dari Firebase Console > Project settings > Your apps.
 export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT.firebasestorage.app",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyDL05X5eLD0UgBK-83IqH1hbbxf78IAuzs",
+  authDomain: "math-adventure-dd362.firebaseapp.com",
+  projectId: "math-adventure-dd362",
+  storageBucket: "math-adventure-dd362.firebasestorage.app",
+  messagingSenderId: "1095336775676",
+  appId: "1:1095336775676:web:d990e9c9cc7185de2eac79"
 };
 
-// Domain internal untuk menyamarkan Firebase email siswa.
-// Siswa tetap login menggunakan NIS + password.
 export const STUDENT_AUTH_DOMAIN = "student.pakkom.local";
